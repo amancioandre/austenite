@@ -12,7 +12,8 @@
 // You should have received a copy of the GNU General Public License along with Austenite. If not, see
 // <http://www.gnu.org/licenses/>.
 
-use std::{any::Any};
+use std::any::{Any, type_name};
+use std::fmt::{Debug, Display};
 
 pub trait Middleware {
     fn req(&mut self) -> Result<String, String>;
@@ -20,4 +21,22 @@ pub trait Middleware {
     fn res(&mut self) -> Result<String, String>;
 
     fn next(&mut self) -> &'static dyn Any;
+
+    fn name(&self) -> &'static str {
+        type_name::<Self>()
+    }
+}
+
+impl Display for dyn Middleware {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let name = self.name();
+        write!(f, "{}", name)
+    }
+}
+
+impl Debug for dyn Middleware {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let name = self.name();
+        write!(f, "{}", name)
+    }
 }

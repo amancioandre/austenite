@@ -12,7 +12,7 @@
 // You should have received a copy of the GNU General Public License along with Austenite. If not, see
 // <http://www.gnu.org/licenses/>.
 
-use std::any::Any;
+use std::any::{Any};
 
 use super::{Middleware};
 
@@ -29,25 +29,30 @@ impl Stack {
     }
 
     fn exists(&self, middleware: &Box<dyn Middleware>) -> Option<usize> {
-        if let Some(idx) = self.middlewares.iter().position(|x| x.type_id() == middleware.type_id()) {
-            Some(idx)
+        if self.middlewares.len() > 0 {
+            if let Some(idx) = self.middlewares.iter().position(|x| x.type_id() == middleware.type_id()) {
+                Some(idx)
+            } else {
+                None
+            }
         } else {
             None
         }
     }
 
-    pub fn attach(&mut self, middleware: Box<dyn Middleware>) {
+    pub fn attach(&mut self, middleware: Box<dyn Middleware>) -> &mut Self {
         match self.exists(&middleware) {
-            Some(idx) => println!("Middleware already exists"),
+            Some(_) => println!("Middleware {} already exists in stack", middleware),
             None => self.middlewares.push(middleware)
         }
+        self
     }
 
-    pub fn dettach(&mut self) {
+    pub fn dettach(&mut self) -> Self {
         unimplemented!()
     }
 
-    pub fn substitute(&mut self, middleware: Box<dyn Middleware>, other: Box<dyn Middleware>) {
+    pub fn substitute(&mut self, middleware: Box<dyn Middleware>, other: Box<dyn Middleware>) -> Self {
         unimplemented!()
     }
 
@@ -135,13 +140,11 @@ mod tests {
     fn stack_disallow_adding_same_middleware() {
         let mut stack = Stack::new(None);
         let middleware_a = Box::new(FakeMiddlewareA::new());
-        dbg!("{}", middleware_a.type_id());
-
         let middleware_b = Box::new(FakeMiddlewareA::new());
-        dbg!("{} {:?}", middleware_b.type_id(), &middleware_b);
-        stack.attach(middleware_a);
-        assert_eq!(stack.middlewares.len(), 1);
-        stack.attach(middleware_b);
+
+        stack
+        .attach(middleware_a)
+        .attach(middleware_b);
         assert_eq!(stack.middlewares.len(), 1);
     }
 }
