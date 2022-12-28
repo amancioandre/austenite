@@ -16,11 +16,30 @@ use std::any::{Any};
 
 use super::{Middleware};
 
+/// Representaiton for a Middleware Stack
+#[derive(Debug)]
 pub struct Stack {
     middlewares: Vec<Box<dyn Middleware>>
 }
 
 impl Stack {
+    /// Returns a Middleware Stack
+    /// 
+    /// # Arguments
+    /// 
+    /// * `middlewares` - An optional vector of boxes around the dynamic implementation of the trait Middleware
+    /// 
+    /// # Examples
+    /// 
+    /// '''
+    /// let stack = Stack::new(
+    ///     Some(
+    ///         vec![
+    ///             Box::new(ExampleMiddleware::new())
+    ///         ]
+    ///     )
+    /// )
+    /// '''
     pub fn new(middlewares: Option<Vec<Box<dyn Middleware>>>) -> Self {
         let middlewares: Vec<Box<dyn Middleware>> = middlewares.unwrap_or(Vec::new());
         Self {
@@ -44,16 +63,16 @@ impl Stack {
         match self.exists(&middleware) {
             Some(_) => println!("Middleware {} already exists in stack", middleware),
             None => self.middlewares.push(middleware)
-        }
+        };
         self
     }
 
-    pub fn dettach(&mut self) -> Self {
-        unimplemented!()
-    }
-
-    pub fn substitute(&mut self, middleware: Box<dyn Middleware>, other: Box<dyn Middleware>) -> Self {
-        unimplemented!()
+    pub fn dettach(&mut self, middleware: Box<dyn Middleware>) -> &mut Self {
+        match self.exists(&middleware) {
+            Some(idx) => { self.middlewares.remove(idx); },
+            None => { println!("Middleware {} didn't exist in stack", middleware); }
+        };
+        self
     }
 
     pub fn run(&self) -> Result<String, String> {
@@ -65,7 +84,7 @@ impl Stack {
 mod tests {
     use super::*;
 
-    #[derive(PartialEq, Debug)]
+    #[derive(PartialEq, Debug, Clone, Copy)]
     struct FakeMiddlewareA {}
 
     impl FakeMiddlewareA {
@@ -79,16 +98,12 @@ mod tests {
             unimplemented!()
         }
 
-        fn req(&mut self) -> Result<String, String> {
-            unimplemented!()
-        }
-
-        fn res(&mut self) -> Result<String, String> {
+        fn message(&mut self) -> Result<String, String> {
             unimplemented!()
         }
     }
 
-    #[derive(PartialEq, Debug)]
+    #[derive(PartialEq, Debug, Clone)]
     struct FakeMiddlewareB {}
 
     impl FakeMiddlewareB {
@@ -102,11 +117,7 @@ mod tests {
             unimplemented!()
         }
 
-        fn req(&mut self) -> Result<String, String> {
-            unimplemented!()
-        }
-
-        fn res(&mut self) -> Result<String, String> {
+        fn message(&mut self) -> Result<String, String> {
             unimplemented!()
         }
     }
@@ -146,5 +157,16 @@ mod tests {
         .attach(middleware_a)
         .attach(middleware_b);
         assert_eq!(stack.middlewares.len(), 1);
+    }
+
+    #[test]
+    fn stack_dettaches_existing_middleware() {
+        let middleware = Box::new(FakeMiddlewareA::new());
+        let mut stack = Stack::new(
+            Some(vec![
+                Box::new(FakeMiddlewareA::new())
+            ]));
+        stack.dettach(middleware);
+        assert_eq!(stack.middlewares.len(), 0);
     }
 }

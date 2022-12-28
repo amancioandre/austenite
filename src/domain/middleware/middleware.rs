@@ -16,9 +16,7 @@ use std::any::{Any, type_name};
 use std::fmt::{Debug, Display};
 
 pub trait Middleware {
-    fn req(&mut self) -> Result<String, String>;
-
-    fn res(&mut self) -> Result<String, String>;
+    fn message(&mut self) -> Result<String, String>;
 
     fn next(&mut self) -> &'static dyn Any;
 
