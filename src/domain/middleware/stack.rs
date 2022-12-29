@@ -12,7 +12,7 @@
 // You should have received a copy of the GNU General Public License along with Austenite. If not, see
 // <http://www.gnu.org/licenses/>.
 
-use std::any::{Any};
+use std::{any::{Any}};
 
 use super::{Middleware};
 
@@ -22,7 +22,7 @@ pub struct Stack {
     middlewares: Vec<Box<dyn Middleware>>
 }
 
-impl Stack {
+impl<'message> Stack {
     /// Returns a Middleware Stack
     /// 
     /// # Arguments
@@ -75,8 +75,19 @@ impl Stack {
         self
     }
 
-    pub fn run(&self) -> Result<String, String> {
-        unimplemented!()
+    pub fn handle(&self, message: &'message &str) -> Result<&'message str, &str> {
+        let mut msg: &str = message;
+        let mut err: &str = "";
+        for middleware in self.middlewares.iter().rev() {
+            match middleware.handle(msg) {
+                Ok(message) => { msg = message; },
+                Err(error) => { err = error; break },
+            }
+        }
+        if err.len() > 0 {
+            return Err(err)
+        }
+        Ok(msg)
     }
 }
 
@@ -94,12 +105,8 @@ mod tests {
     }
 
     impl Middleware for FakeMiddlewareA {
-        fn next(self: &mut FakeMiddlewareA) -> &'static dyn Any {
-            unimplemented!()
-        }
-
-        fn message(&mut self) -> Result<String, String> {
-            unimplemented!()
+        fn handle<'message>(&self, _message: &'message str) -> Result<&'message str, &str> {
+            Err("I always fail!")
         }
     }
 
@@ -113,12 +120,8 @@ mod tests {
     }
 
     impl Middleware for FakeMiddlewareB {
-        fn next(self: &mut FakeMiddlewareB) -> &'static dyn Any {
-            unimplemented!()
-        }
-
-        fn message(&mut self) -> Result<String, String> {
-            unimplemented!()
+        fn handle<'message>(&self, message: &'message str) -> Result<&'message str, &str> {
+            Ok(message)
         }
     }
 
@@ -168,5 +171,36 @@ mod tests {
             ]));
         stack.dettach(middleware);
         assert_eq!(stack.middlewares.len(), 0);
+    }
+
+    #[test]
+    fn stack_results_ok_if_middlewares_succeeds() {
+        let stack = Stack::new(
+            Some(
+                vec![Box::new(FakeMiddlewareB::new())]
+            )
+        );
+        let message = "A message";
+        dbg!(message);
+        match stack.handle(&message) {
+            Ok(msg) => { assert_eq!(msg, message); },
+            Err(_) => ()
+        }
+    }
+
+    #[test]
+    fn stack_results_err_if_at_least_one_middleware_fails() {
+        let stack = Stack::new(
+            Some(
+                vec![
+                    Box::new(FakeMiddlewareA::new()),
+                    Box::new(FakeMiddlewareB::new())
+                ]
+            )
+        );
+        match stack.handle(&"A message") {
+            Ok(_) => { assert!(false); },
+            Err(_) => { assert!(true); }
+        }
     }
 }
